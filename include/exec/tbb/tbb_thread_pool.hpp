@@ -17,6 +17,12 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::tbb::tbb_thread_pool requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #include <tbb/task_arena.h>
 
 #include "../thread_pool_base.hpp"

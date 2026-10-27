@@ -16,6 +16,12 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::windows_thread_pool requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #if !__has_include(<windows.h>)
 #  error "windows.h not found."
 #else

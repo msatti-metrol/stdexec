@@ -34,7 +34,9 @@ import stdexec;
 #  include "__detail/__completion_signatures.hpp"
 #  include "__detail/__connect_awaitable.hpp"
 #  include "__detail/__continues_on.hpp"
-#  include "__detail/__counting_scopes.hpp"
+#  if STDEXEC_ENABLE_THREADS
+#    include "__detail/__counting_scopes.hpp"
+#  endif
 #  include "__detail/__debug.hpp"
 #  include "__detail/__domain.hpp"
 #  include "__detail/__env.hpp"
@@ -48,23 +50,31 @@ import stdexec;
 #  include "__detail/__meta.hpp"
 #  include "__detail/__on.hpp"
 #  include "__detail/__operation_states.hpp"
-#  include "__detail/__parallel_scheduler.hpp"
+#  if STDEXEC_ENABLE_THREADS
+#    include "__detail/__parallel_scheduler.hpp"
+#  endif
 #  include "__detail/__read_env.hpp"
 #  include "__detail/__receiver_adaptor.hpp"
 #  include "__detail/__receivers.hpp"
-#  include "__detail/__run_loop.hpp"
+#  if STDEXEC_ENABLE_THREADS
+#    include "__detail/__run_loop.hpp"
+#  endif
 #  include "__detail/__schedule_from.hpp"
 #  include "__detail/__schedulers.hpp"
 #  include "__detail/__scope_concepts.hpp"
 #  include "__detail/__sender_adaptor_closure.hpp"
 #  include "__detail/__senders.hpp"
 #  include "__detail/__spawn.hpp"
-#  include "__detail/__spawn_future.hpp"
+#  if STDEXEC_ENABLE_THREADS
+#    include "__detail/__spawn_future.hpp"
+#  endif
 #  include "__detail/__starts_on.hpp"
 #  include "__detail/__stopped_as_error.hpp"
 #  include "__detail/__stopped_as_optional.hpp"
 #  include "__detail/__submit.hpp"
-#  include "__detail/__sync_wait.hpp"
+#  if STDEXEC_ENABLE_THREADS
+#    include "__detail/__sync_wait.hpp"
+#  endif
 #  include "__detail/__task.hpp"
 #  include "__detail/__task_scheduler.hpp"
 #  include "__detail/__then.hpp"

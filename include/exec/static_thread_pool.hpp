@@ -19,6 +19,10 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::static_thread_pool requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import std;
 import stdexec;

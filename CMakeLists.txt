@@ -75,6 +75,9 @@ message(STATUS)
 # Write the version header
 rapids_cmake_write_version_file(include/stdexec_version_config.hpp)
 
+# Disable thread-dependent features for single-threaded or bare-metal builds.
+option(STDEXEC_ENABLE_THREADS "Enable thread-dependent functionality" ON)
+
 # Set CMAKE_BUILD_TYPE=Release the default if none provided
 rapids_cmake_build_type(Release)
 
@@ -82,7 +85,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 # Disable the tests by default unless it is the top level project or build
 # testing was specified.
-if(STDEXEC_MAIN_PROJECT OR BUILD_TESTING)
+if(STDEXEC_ENABLE_THREADS AND (STDEXEC_MAIN_PROJECT OR BUILD_TESTING))
   set(STDEXEC_BUILD_TESTS_DEFAULT ON)
 else()
   set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
@@ -106,14 +109,14 @@ endif()
 # * Dependencies -------------------------------------------------------------
 
 # Initialize CPM
-if(STDEXEC_BUILD_TESTS
+if((STDEXEC_BUILD_TESTS AND STDEXEC_ENABLE_THREADS)
    OR STDEXEC_ENABLE_ASIO
    OR STDEXEC_ENABLE_TASKFLOW
    OR STDEXEC_ENABLE_CUDA)
   rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 endif()
 
-if(STDEXEC_BUILD_TESTS)
+if(STDEXEC_BUILD_TESTS AND STDEXEC_ENABLE_THREADS)
   # Add Catch2
   set(Catch2_VERSION 3.14.0)
   # Always download it, don't attempt to do `find_package(Catch2)` first
@@ -157,10 +160,11 @@ if(STDEXEC_BUILD_TESTS)
     ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff)
 endif()
 
-# Ensure that we link with the threading library
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-rapids_find_package(Threads REQUIRED BUILD_EXPORT_SET stdexec-exports
-                    INSTALL_EXPORT_SET stdexec-exports)
+if(STDEXEC_ENABLE_THREADS)
+  set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+  rapids_find_package(Threads REQUIRED BUILD_EXPORT_SET stdexec-exports
+                      INSTALL_EXPORT_SET stdexec-exports)
+endif()
 
 # ##############################################################################
 # * Main library targets -----------------------------------------------------
@@ -271,13 +275,19 @@ target_include_directories(stdexec SYSTEM ${stdexec_scope}
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+if(NOT STDEXEC_ENABLE_THREADS)
+  target_compile_definitions(stdexec ${stdexec_scope} STDEXEC_ENABLE_THREADS=0)
+else()
+  target_compile_definitions(stdexec ${stdexec_scope} STDEXEC_ENABLE_THREADS=1)
+endif()
+
 list(APPEND stdexec_export_targets stdexec)
 
 # Set library version
 set_target_properties(stdexec PROPERTIES VERSION "${STDEXEC_VERSION}"
                                          SOVERSION "${STDEXEC_VERSION_MAJOR}")
 
-if(STDEXEC_BUILD_TESTS)
+if(STDEXEC_BUILD_TESTS AND STDEXEC_ENABLE_THREADS)
   # Test that headers are self-contained
   set_target_properties(stdexec PROPERTIES VERIFY_INTERFACE_HEADER_SETS TRUE)
 
@@ -330,7 +340,9 @@ endif()
 # Declare the public include directories
 include(GNUInstallDirs)
 
-target_link_libraries(stdexec ${stdexec_scope} Threads::Threads)
+if(STDEXEC_ENABLE_THREADS)
+  target_link_libraries(stdexec ${stdexec_scope} Threads::Threads)
+endif()
 
 if(STDEXEC_BUILD_MODULES)
   # Use C++23 standard; modules were introduced in 20 so this feels
@@ -550,9 +562,14 @@ include(ConfigureASIO)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   check_include_file_cxx("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
+  if(STDEXEC_ENABLE_THREADS)
+    set(STDEXEC_LIBDISPATCH_DEFAULT ${STDEXEC_FOUND_LIBDISPATCH})
+  else()
+    set(STDEXEC_LIBDISPATCH_DEFAULT OFF)
+  endif()
   option(STDEXEC_ENABLE_LIBDISPATCH
          "Enable use of the Grand Central Dispatch scheduler"
-         ${STDEXEC_FOUND_LIBDISPATCH})
+         ${STDEXEC_LIBDISPATCH_DEFAULT})
   if(STDEXEC_ENABLE_LIBDISPATCH)
     target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_LIBDISPATCH)
   endif()
@@ -560,15 +577,32 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   check_include_file_cxx("windows.h" STDEXEC_FOUND_WINDOWS_HEADER)
+  if(STDEXEC_ENABLE_THREADS)
+    set(STDEXEC_WINDOWS_THREAD_POOL_DEFAULT ${STDEXEC_FOUND_WINDOWS_HEADER})
+  else()
+    set(STDEXEC_WINDOWS_THREAD_POOL_DEFAULT OFF)
+  endif()
   option(STDEXEC_ENABLE_WINDOWS_THREAD_POOL
          "Enable use of the Windows Thread Pool scheduler"
-         ${STDEXEC_FOUND_WINDOWS_HEADER})
-  target_compile_definitions(stdexec
-                             INTERFACE STDEXEC_ENABLE_WINDOWS_THREAD_POOL)
+         ${STDEXEC_WINDOWS_THREAD_POOL_DEFAULT})
+  if(STDEXEC_ENABLE_THREADS AND STDEXEC_ENABLE_WINDOWS_THREAD_POOL)
+    target_compile_definitions(stdexec
+                               INTERFACE STDEXEC_ENABLE_WINDOWS_THREAD_POOL)
+  endif()
+endif()
+
+if(NOT STDEXEC_ENABLE_THREADS
+   AND (STDEXEC_ENABLE_ASIO OR STDEXEC_ENABLE_TASKFLOW OR STDEXEC_ENABLE_TBB
+        OR STDEXEC_ENABLE_LIBDISPATCH OR STDEXEC_ENABLE_WINDOWS_THREAD_POOL))
+  message(FATAL_ERROR
+    "Thread-backed scheduler integrations require STDEXEC_ENABLE_THREADS=ON")
 endif()
 
 option(STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
 if(STDEXEC_ENABLE_NUMA)
+  if(NOT STDEXEC_ENABLE_THREADS)
+    message(FATAL_ERROR "STDEXEC_ENABLE_NUMA requires STDEXEC_ENABLE_THREADS=ON")
+  endif()
   find_package(numa REQUIRED)
   target_link_libraries(stdexec INTERFACE numa::numa)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
@@ -582,6 +616,11 @@ if(DEFINED STDEXEC_BUILD_SYSTEM_CONTEXT)
       "STDEXEC_BUILD_SYSTEM_CONTEXT is deprecated. Use STDEXEC_BUILD_PARALLEL_SCHEDULER instead."
   )
   set(STDEXEC_BUILD_PARALLEL_SCHEDULER ${STDEXEC_BUILD_SYSTEM_CONTEXT})
+endif()
+
+if(NOT STDEXEC_ENABLE_THREADS AND STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  message(FATAL_ERROR
+    "STDEXEC_BUILD_PARALLEL_SCHEDULER requires STDEXEC_ENABLE_THREADS=ON")
 endif()
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
@@ -635,7 +674,7 @@ if(STDEXEC_ENABLE_IO_URING)
 endif()
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
-option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
+option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ${STDEXEC_ENABLE_THREADS})
 
 # Configure documentation
 if(STDEXEC_BUILD_DOCS)
@@ -643,13 +682,20 @@ if(STDEXEC_BUILD_DOCS)
 endif()
 
 # Configure test executables
-if(STDEXEC_BUILD_TESTS)
+if(STDEXEC_BUILD_TESTS AND STDEXEC_ENABLE_THREADS)
   add_subdirectory(test)
+elseif(STDEXEC_BUILD_TESTS)
+  add_executable(test.no_threads test/no_threads.cpp)
+  target_link_libraries(test.no_threads
+                        PRIVATE STDEXEC::stdexec stdexec_executable_flags)
+  add_test(NAME test.no_threads COMMAND test.no_threads)
 endif()
 
 # Configure example executables
-if(STDEXEC_BUILD_EXAMPLES)
+if(STDEXEC_BUILD_EXAMPLES AND STDEXEC_ENABLE_THREADS)
   add_subdirectory(examples)
+elseif(STDEXEC_BUILD_EXAMPLES)
+  message(STATUS "Skipping stdexec examples because STDEXEC_ENABLE_THREADS=OFF")
 endif()
 
 if(STDEXEC_IS_TOP_LEVEL)

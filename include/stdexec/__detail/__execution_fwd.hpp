@@ -515,6 +515,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 STDEXEC_P2300_NAMESPACE_END()
 
 ////////////////////////////////////////////////////////////////////////////////
+#if STDEXEC_ENABLE_THREADS
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   STDEXEC_MODULE_EXPORT
   struct sync_wait_t;
@@ -525,6 +526,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   STDEXEC_MODULE_EXPORT
   extern sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
+#endif
 
 // NOT TO SPEC: make sync_wait et. al. available in namespace STDEXEC (possibly
 // std::execution) as well:
@@ -545,10 +547,12 @@ namespace STDEXEC
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::inplace_stop_token)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::inplace_stop_callback)
 
+#  if STDEXEC_ENABLE_THREADS
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_t)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant_t)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant)
+#  endif
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

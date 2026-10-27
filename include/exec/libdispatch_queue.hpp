@@ -16,6 +16,12 @@
 
 #pragma once
 
+#include "../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::libdispatch_queue requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #if __has_include(<dispatch/dispatch.h>)
 
 #  include <stdexec/execution.hpp>

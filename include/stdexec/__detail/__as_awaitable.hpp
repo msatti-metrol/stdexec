@@ -42,7 +42,9 @@ import stdexec;
 #    include <exception>
 #    include <functional>  // for std::identity
 #    include <system_error>
-#    include <thread>
+#    if STDEXEC_ENABLE_THREADS
+#      include <thread>
+#    endif
 #  endif
 
 #  include "__prologue.hpp"
@@ -160,6 +162,7 @@ namespace STDEXEC
       __expected_t<_Value> __result_{__no_init};
     };
 
+#  if STDEXEC_ENABLE_THREADS
     // When the sender is not statically known to complete inline, we need to
     // use atomic state to guard against too many inline completions causing a
     // stack overflow.
@@ -186,6 +189,7 @@ namespace STDEXEC
       //           notify_one is used; the value change itself is the signal.
       __std::atomic<std::thread::id> __thread_id_{std::this_thread::get_id()};
     };
+#  endif
 
     template <class _Value>
     struct __receiver_base
@@ -246,6 +250,7 @@ namespace STDEXEC
       }
     };
 
+#  if STDEXEC_ENABLE_THREADS
     // The receiver type used to connect to senders that could complete
     // asynchronously.
     template <class _Promise, class _Value>
@@ -312,16 +317,23 @@ namespace STDEXEC
         STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
       }
     };
+#  endif
 
     template <class _Sender, class _Promise>
     using __sync_receiver_t = __sync_receiver<_Promise, __value_t<_Sender, _Promise>>;
 
+#  if STDEXEC_ENABLE_THREADS
     template <class _Sender, class _Promise>
     using __async_receiver_t = __async_receiver<_Promise, __value_t<_Sender, _Promise>>;
+#  endif
 
     ////////////////////////////////////////////////////////////////////////////
     // __sender_awaiter: awaitable type returned by as_awaitable when given a
     // sender that does not have an as_awaitable member function
+    template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
+    struct __sender_awaiter;
+
+#  if STDEXEC_ENABLE_THREADS
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
     struct __sender_awaiter : __sender_awaiter_base<__value_t<_Sender, _Promise>, false>
     {
@@ -369,6 +381,7 @@ namespace STDEXEC
       using __receiver_t = __async_receiver_t<_Sender, _Promise>;
       connect_result_t<_Sender, __receiver_t> __opstate_;
     };
+#  endif
 
     // When the sender is known to complete inline, we can connect and start the
     // operation in await_suspend.

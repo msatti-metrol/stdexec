@@ -16,6 +16,12 @@
  */
 #pragma once
 
+#include "../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::single_thread_context requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #include "../stdexec/execution.hpp"
 
 #include <thread>

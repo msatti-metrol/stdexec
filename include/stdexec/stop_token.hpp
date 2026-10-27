@@ -30,11 +30,13 @@ import stdexec;
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstdint>
-#    include <thread>
+#    if STDEXEC_ENABLE_THREADS
+#      include <thread>
+#    endif
 #    include <utility>
 #    include <version>
 
-#    if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911L
+#    if STDEXEC_ENABLE_THREADS && __has_include(<stop_token>) && __cpp_lib_jthread >= 201911L
 #      include <stop_token>  // IWYU pragma: export
 #    endif
 #  endif
@@ -48,6 +50,7 @@ extern "C" void _mm_pause();
 
 namespace STDEXEC::__stok
 {
+#  if STDEXEC_ENABLE_THREADS
   inline void __pause()
   {
 #  if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
@@ -60,6 +63,7 @@ namespace STDEXEC::__stok
     asm volatile("or 27,27,27");
 #  endif
   }
+#  endif
 
   struct __inplace_stop_callback_base
   {
@@ -89,6 +93,7 @@ namespace STDEXEC::__stok
     STDEXEC::__std::atomic<bool>   __callback_completed_{false};
   };
 
+#  if STDEXEC_ENABLE_THREADS
   struct __spin_wait
   {
     constexpr __spin_wait() noexcept = default;
@@ -111,6 +116,7 @@ namespace STDEXEC::__stok
     static constexpr uint32_t __yield_threshold_ = 20;
     uint32_t                  __count_           = 0;
   };
+#  endif
 
   using __get_stop_token_t =
     STDEXEC::__query<get_stop_token_t, never_stop_token{}, STDEXEC::__q1<STDEXEC::__decay_t>>;
@@ -124,7 +130,11 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   class inplace_stop_source
   {
    public:
+#  if STDEXEC_ENABLE_THREADS
     inplace_stop_source() noexcept = default;
+#  else
+    inplace_stop_source() noexcept = delete;
+#  endif
     ~inplace_stop_source();
     inplace_stop_source(inplace_stop_source&&) = delete;
 
@@ -164,7 +174,9 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
     mutable STDEXEC::__std::atomic<uint8_t>                __state_{0};
     mutable STDEXEC::__stok::__inplace_stop_callback_base* __callbacks_ = nullptr;
+#  if STDEXEC_ENABLE_THREADS
     std::thread::id                                        __notifying_thread_;
+#  endif
     bool*                                                  __destroyed_ = nullptr;
   };
 
@@ -238,7 +250,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     using callback_type = _Fun;
 
     template <class _Fun2>
-      requires STDEXEC::__std::constructible_from<_Fun, _Fun2>
+      requires STDEXEC_ENABLE_THREADS && STDEXEC::__std::constructible_from<_Fun, _Fun2>
     explicit inplace_stop_callback(inplace_stop_token __token, _Fun2&& __fun)
       noexcept(STDEXEC::__nothrow_constructible_from<_Fun, _Fun2>)
       : STDEXEC::__stok::__inplace_stop_callback_base(__token.__source_,
@@ -267,6 +279,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   template <class _Fun>
   inplace_stop_callback(inplace_stop_token, _Fun) -> inplace_stop_callback<_Fun>;
 
+#  if STDEXEC_ENABLE_THREADS
   inline inplace_stop_source::~inplace_stop_source()
   {
     if (stop_requested())
@@ -472,6 +485,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
       }
     }
   }
+#  endif
 
   struct get_stop_token_t : STDEXEC::__stok::__get_stop_token_t
   {

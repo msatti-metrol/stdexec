@@ -30,7 +30,9 @@ import stdexec;
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>
-#    include <thread>
+#    if STDEXEC_ENABLE_THREADS
+#      include <thread>
+
 #  endif
 
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
@@ -197,7 +199,7 @@ namespace STDEXEC
       sizeof(__synthetic_coro_frame));
   }  // namespace __detail
 
-#    if defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
+#    if defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND) && STDEXEC_ENABLE_THREADS
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly
@@ -324,6 +326,7 @@ namespace STDEXEC
     return __coro.unhandled_stopped();
   }
 
+#      if STDEXEC_ENABLE_THREADS
   STDEXEC_ATTRIBUTE(always_inline)
   auto __coroutine_signal_completion(__std::atomic<std::thread::id>& __thread_id_) noexcept  //
     -> __std::coroutine_handle<>
@@ -331,6 +334,8 @@ namespace STDEXEC
     __thread_id_.store({}, __std::memory_order_release);
     return __std::noop_coroutine();
   }
+#      endif
+#  endif
 #    endif  // !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
 
 }  // namespace STDEXEC

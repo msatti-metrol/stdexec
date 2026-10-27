@@ -17,6 +17,10 @@
 
 #include "__config.hpp"
 
+#if !STDEXEC_ENABLE_THREADS
+#  error "stdexec::run_loop requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
 import stdexec;
@@ -37,6 +41,7 @@ import stdexec;
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstddef>
+#    include <thread>
 #  endif
 
 #  include "__prologue.hpp"

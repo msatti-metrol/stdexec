@@ -17,6 +17,12 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::taskflow::taskflow_thread_pool requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #include <taskflow/taskflow.hpp>
 
 #include "../thread_pool_base.hpp"

@@ -17,6 +17,12 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::asio::asio_thread_pool requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #include <exec/asio/asio_config.hpp>
 
 #include "noexcept_boost_throw.hpp"  // IWYU pragma: keep

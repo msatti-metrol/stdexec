@@ -17,6 +17,10 @@
 
 // IWYU pragma: always_keep
 
+#ifndef STDEXEC_ENABLE_THREADS
+#  error This library requires STDEXEC_ENABLE_THREADS to be defined.
+#endif
+
 #if __cplusplus < 202002L
 #  if defined(_MSC_VER) && !defined(__clang__)
 #    error This library requires the use of C++20. Use /Zc:__cplusplus to enable __cplusplus conformance.

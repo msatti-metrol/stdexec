@@ -17,6 +17,12 @@
 
 #pragma once
 
+#include "../stdexec/__detail/__config.hpp"
+
+#if !STDEXEC_ENABLE_THREADS
+#  error "exec::timed_thread_scheduler requires STDEXEC_ENABLE_THREADS=ON"
+#endif
+
 #include "detail/intrusive_heap.hpp"
 #include "timed_scheduler.hpp"  // IWYU pragma: keep for schedule_at and schedule_after
 

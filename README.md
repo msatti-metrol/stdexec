@@ -115,6 +115,14 @@ add_subdirectory(stdexec)
 target_link_libraries(my_target PRIVATE STDEXEC::stdexec)
 ```
 
+Thread-backed schedulers and contexts are enabled by default. Configure with
+`-DSTDEXEC_ENABLE_THREADS=OFF` to skip the `Threads` package lookup and link
+dependency. Thread-backed scheduler headers, asynchronous sender-to-coroutine
+adaptation, thread-safe stop sources, `run_loop`, and `sync_wait` are disabled
+in this mode. Functionality that relies on `std::this_thread::yield()` is also
+disabled; inline sender operations remain available. Thread-dependent tests
+and examples are skipped.
+
 ### Conan
 
 A [`conanfile.py`](conanfile.py) is provided for use with the [Conan](https://conan.io) package manager.
